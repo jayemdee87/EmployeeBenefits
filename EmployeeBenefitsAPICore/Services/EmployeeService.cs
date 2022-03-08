@@ -12,6 +12,8 @@ namespace EmployeeBenefitsAPICore.Services
 {
     public class EmployeeService : IEmployeeService
     {
+        private readonly EmployeeBenefitsContext _dbContext;
+
         private readonly decimal paycheckAmount = 2000;
         private readonly decimal employeeDeductions = 1000;
         private readonly decimal dependentDeductions = 500;
@@ -19,14 +21,16 @@ namespace EmployeeBenefitsAPICore.Services
         private readonly string discountLetter = "a";
         private readonly decimal discountAmount = 0.1M;
 
+        public EmployeeService(EmployeeBenefitsContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
         public List<Employee> GetEmployees()
         {
             var employees = new List<Employee>();
-            using (var dbContext = new EmployeeBenefitsContext())
-            {
-                employees = dbContext.Employees.Include(x => x.Dependents)
+            employees = _dbContext.Employees.Include(x => x.Dependents)
                                                    .ToList();
-            }
 
             return employees;
         }
@@ -34,65 +38,47 @@ namespace EmployeeBenefitsAPICore.Services
         public Employee GetEmployee(long id)
         {
             Employee employee;
-            using (var dbContext = new EmployeeBenefitsContext())
-            {
-                employee = dbContext.Employees.Include(x => x.Dependents)
-                                              .SingleOrDefault(x => x.Id == id);
-            }
+            employee = _dbContext.Employees.Include(x => x.Dependents)
+                                          .SingleOrDefault(x => x.Id == id);
 
             return employee;
         }
 
         public Employee AddEmployee(Employee employee)
         {
-            using (var dbContext = new EmployeeBenefitsContext())
-            {
-                var readyToSave = CalculateSalary(employee);
+            var readyToSave = CalculateSalary(employee);
 
-                dbContext.Add(readyToSave);
-                dbContext.SaveChanges();
-            }
+            _dbContext.Add(readyToSave);
+            _dbContext.SaveChanges();
             
             return employee;
         }
 
         public Employee UpdateEmployee(Employee employee)
         {
-            using (var dbContext = new EmployeeBenefitsContext())
+            var updateEmployee = _dbContext.Employees.Include(x => x.Dependents)
+                                                    .SingleOrDefault(x => x.Id == employee.Id);
+
+            foreach(var dependent in employee.Dependents)
             {
-                var updateEmployee = dbContext.Employees.Include(x => x.Dependents)
-                                                      .SingleOrDefault(x => x.Id == employee.Id);
-
-                foreach(var dependent in employee.Dependents)
+                if (dependent.Id == 0)
                 {
-                    if (dependent.Id == 0)
-                    {
-                        updateEmployee.Dependents.Add(dependent);
-                    }
-                    else
-                    {
-                        var updateDependent = updateEmployee.Dependents.SingleOrDefault(x => x.Id == dependent.Id);
-                    }
+                    updateEmployee.Dependents.Add(dependent);
                 }
-
-                var readyToSave = CalculateSalary(updateEmployee);
-
-                dbContext.SaveChanges();
+                else
+                {
+                    var updateDependent = updateEmployee.Dependents.SingleOrDefault(x => x.Id == dependent.Id);
+                }
             }
+
+            updateEmployee = CalculateSalary(updateEmployee);
+
+            _dbContext.SaveChanges();
 
             return employee;
         }
 
-        private List<EmployeeDto> CalculateSalaries(List<Employee> employees)
-        {
-            foreach (var employee in employees)
-            {
-                CalculateSalary(employee);
-            }
-            return new List<EmployeeDto>();
-        }
-
-        private Employee CalculateSalary(Employee employee)
+        public Employee CalculateSalary(Employee employee)
         {
             employee.AnnualSalary = Math.Round(paycheckAmount * annualPaychecks);
 
