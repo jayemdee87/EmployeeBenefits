@@ -1,0 +1,84 @@
+﻿@page "/editemployee/{id}"
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@using EmployeeBenefits.Dtos
+
+<h1>Edit Employee</h1>
+
+<EditForm Model="@employee" OnSubmit="@HandleSubmit">
+    <div class="form-group">
+        <label for="first-name">First Name</label>
+        <InputText class="form-control" id="first-name" @bind-Value="employee.FirstName" />
+    </div>
+
+    <div class="form-group">
+        <label for="last-name">Last Name</label>
+        <InputText class="form-control" id="last-name" @bind-Value="employee.LastName" />
+    </div>
+
+    <p>
+        <h3>Add Dependents Below:</h3>
+    </p>
+
+    <div class="form-group">
+        <label for="dep-first-name">Dependent First Name</label>
+        <InputText class="form-control" id="last-name" @bind-Value="dependent.FirstName" />
+    </div>
+
+    <div class="form-group">
+        <label for="dep-first-name">Dependent Last Name</label>
+        <InputText class="form-control" id="last-name" @bind-Value="dependent.LastName" />
+        <button type="button" class="btn btn-primary" @onclick="@AddDependent">Add Dependent</button>
+    </div>
+
+    @if (employee.Dependents.Any())
+    {
+        <h1>Dependents</h1>
+        <ul style="list-style: none;">
+            @foreach (var dependent in employee.Dependents)
+            {
+                <li>@dependent.FirstName @dependent.LastName</li>
+            }
+        </ul>
+    }
+
+    <button type="submit">Submit</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private const string ServiceEndpoint = "https://localhost:44313/api/Employee";
+    private EmployeeDto employee = new();
+    private DependentDto dependent = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var id = long.Parse(Id);
+        employee = await Http.GetFromJsonAsync<EmployeeDto>($"{ServiceEndpoint}/GetEmployee/{id}");
+    }
+
+    private async void AddDependent()
+    {
+        if (!string.IsNullOrEmpty(dependent.FirstName) && !string.IsNullOrEmpty(dependent.LastName))
+        {
+            employee.Dependents.Add(dependent);
+            dependent = new();
+        }
+        else
+        {
+            await JS.InvokeAsync<object>("Alert", "Please provide Dependent first and last name");
+        }
+    }
+
+    private async void HandleSubmit()
+    {
+        if (employee != null)
+        {
+            await Http.PostAsJsonAsync<EmployeeDto>($"{ServiceEndpoint}/AddOrUpdateEmployee", employee);
+            NavigationManager.NavigateTo("");
+        }
+    }
+}

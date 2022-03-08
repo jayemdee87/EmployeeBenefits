@@ -1,0 +1,65 @@
+﻿@page "/"
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using EmployeeBenefits.Dtos
+
+<h1>Employees</h1>
+
+@if (employees == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Annual Salary</th>
+                <th>Paycheck Deductions</th>
+                <th>Paycheck Total</th>
+                <th>Dependents</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var employee in employees)
+            {
+                <tr>
+                    <td>@employee.FirstName</td>
+                    <td>@employee.LastName</td>
+                    <td>@employee.AnnualSalary</td>
+                    <td>@employee.PaycheckDeduction</td>
+                    <td>@employee.PayCheckAmount</td>
+                    <td>
+                        @employee.Dependents.Count().ToString()
+                    </td>
+                    <th><button type="button" class="btn btn-link" @onclick="@(() => EditEmployee(employee.Id))">Edit</button></th>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<button class="btn btn-primary" @onclick="AddEmployee">Add Employee</button>
+
+@code {
+    private const string ServiceEndpoint = "https://localhost:44313/api/Employee/GetEmployees";
+    private EmployeeDto[] employees;
+
+    protected override async Task OnInitializedAsync() => await GetEmployees();
+
+    private async Task GetEmployees() =>
+        employees = await Http.GetFromJsonAsync<EmployeeDto[]>(ServiceEndpoint);
+
+    private void AddEmployee()
+    {
+        NavigationManager.NavigateTo("addEmployee");
+    }
+
+    private void EditEmployee(long id)
+    {
+        NavigationManager.NavigateTo("editemployee/" + id);
+    }
+}
